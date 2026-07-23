@@ -1,0 +1,31 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    schema: "migrations/001_create_ledger_table.up.sql"
+    queries: "internal/ledger/query/queries.sql"
+    gen:
+      go:
+        package: "query"
+        out: "internal/ledger/query"
+        sql_package: "pgx/v5"
+        emit_json_tags: false
+        overrides:
+          - db_type: "uuid"
+            go_type: "github.com/google/uuid.UUID"
+          - db_type: "jsonb"
+            go_type: "encoding/json.RawMessage"
+
+  - engine: "postgresql"
+    schema: "migrations/002_create_account_table.up.sql"
+    queries: "internal/account/query/queries.sql"
+    gen:
+      go:
+        package: "query"
+        out: "internal/account/query"
+        sql_package: "pgx/v5"
+        emit_json_tags: false
+        overrides:
+          - db_type: "uuid"
+            go_type: "github.com/google/uuid.UUID"
+          - db_type: "jsonb"
+            go_type: "encoding/json.RawMessage"

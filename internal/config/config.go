@@ -10,11 +10,15 @@ type Config struct {
 
 type DBConfig struct {
 	Host     string `env:"DB_HOST"`
-	Port     int    `env:"DB_PORT"`
+	Port     uint16 `env:"DB_PORT"`
 	Name     string `env:"DB_NAME"`
 	User     string `env:"DB_USER"`
 	Password string `env:"DB_PASSWORD"`
 	MaxConn  int    `env:"DB_MAX_CONN"`
+}
+
+type ServerConfig struct {
+	Port uint16 `env:"SERVER_PORT"`
 }
 
 func Load() (Config, error) {
