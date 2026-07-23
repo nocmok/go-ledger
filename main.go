@@ -19,7 +19,7 @@ func main() {
 		panic(fmt.Errorf("error loading config: %w", err))
 	}
 
-	if err := migrate.Migrate(config.DBConfig); err != nil {
+	if err := migrate.Migrate("migrations", config.DBConfig); err != nil {
 		panic(fmt.Errorf("failed to run migration: %w", err))
 	}
 

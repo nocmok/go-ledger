@@ -10,9 +10,10 @@ import (
 	"github.com/nocmok/go-ledger/internal/config"
 )
 
-func Migrate(config config.DBConfig) (err error) {
-	url := fmt.Sprintf("pgx5://%s:%s@%s:%d/%s", config.User, config.Password, config.Host, config.Port, config.Name)
-	m, err := migrate.New("file://migrations", url)
+func Migrate(path string, config config.DBConfig) (err error) {
+	dbUrl := fmt.Sprintf("pgx5://%s:%s@%s:%d/%s", config.User, config.Password, config.Host, config.Port, config.Name)
+	srcUrl := fmt.Sprintf("file://%s", path)
+	m, err := migrate.New(srcUrl, dbUrl)
 	if err != nil {
 		return err
 	}

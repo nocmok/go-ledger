@@ -2,8 +2,6 @@ package migrate_test
 
 import (
 	"context"
-	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
@@ -12,17 +10,6 @@ import (
 	"github.com/nocmok/go-ledger/internal/config"
 	"github.com/nocmok/go-ledger/internal/migrate"
 )
-
-// repoRoot resolves the repository root from this file's location, since
-// migrate.Migrate reads migrations from the relative path "migrations".
-func repoRoot(t *testing.T) string {
-	t.Helper()
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("failed to determine caller for repo root lookup")
-	}
-	return filepath.Join(filepath.Dir(file), "..", "..")
-}
 
 func TestMigrate_AppliesAllMigrations(t *testing.T) {
 	ctx := context.Background()
@@ -53,15 +40,13 @@ func TestMigrate_AppliesAllMigrations(t *testing.T) {
 
 	dbConfig := config.DBConfig{
 		Host:     host,
-		Port:     int(mappedPort.Num()),
+		Port:     mappedPort.Num(),
 		Name:     "ledger",
 		User:     "ledger",
 		Password: "ledger",
 	}
 
-	t.Chdir(repoRoot(t))
-
-	if err := migrate.Migrate(dbConfig); err != nil {
+	if err := migrate.Migrate("../../migrations", dbConfig); err != nil {
 		t.Fatalf("Migrate returned error: %v", err)
 	}
 
