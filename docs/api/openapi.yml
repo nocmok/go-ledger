@@ -1,0 +1,88 @@
+openapi: 3.1.0
+
+info:
+  title: Ledger API
+  description: Double-entry ledger & payment processing engine API
+  version: 1.0.0
+
+paths:
+  /accounts:
+    post:
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAccountRequest"
+      responses:
+        '200':
+          description: Account created successfuly
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateAccountResponse"
+  /accounts/{accountId}:
+    parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      responses:
+        '200':
+          description: Account returned successfuly
+          content:
+            appplication/json:
+              schema:
+                $ref: "#/components/schemas/Account"
+
+components:
+  schemas:
+    CreateAccountRequest:
+      type: object
+      required:
+        - metadata
+      properties:
+        metadata:
+          type: object
+          description: Arbitrary metadata to include in account
+
+    CreateAccountResponse:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+          format: uuid
+
+    Account:
+      type: object
+      required:
+        - id
+        - status
+        - metadata
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/AccountStatus"
+        metadata:
+          type: object
+          description: Arbitrary metadata to include in account
+
+    AccountStatus:
+      type: string
+      enum:
+        - active
+        - frozen
+        - blocked
