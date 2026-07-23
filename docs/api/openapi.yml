@@ -6,6 +6,57 @@ info:
   version: 1.0.0
 
 paths:
+  /ledgers:
+    post:
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLedgerRequest"
+      responses:
+        '201':
+          description: Ledger created successfuly
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ledger"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  
+  /ledgers/{ledgerId}:
+    get:
+      parameters:
+        - name: ledgerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Ledger found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ledger"
+        '404':
+          description: Ledger not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /accounts:
     post:
       parameters:
@@ -21,12 +72,19 @@ paths:
             schema:
               $ref: "#/components/schemas/CreateAccountRequest"
       responses:
-        '200':
+        '201':
           description: Account created successfuly
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CreateAccountResponse"
+                $ref: "#/components/schemas/Account"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /accounts/{accountId}:
     parameters:
       - name: accountId
@@ -38,47 +96,86 @@ paths:
     get:
       responses:
         '200':
-          description: Account returned successfuly
+          description: Account found
           content:
             appplication/json:
               schema:
                 $ref: "#/components/schemas/Account"
+        '404':
+          description: Account not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
 components:
   schemas:
-    CreateAccountRequest:
+    CreateLedgerRequest:
       type: object
       required:
+        - name
         - metadata
       properties:
+        name:
+          type: string
         metadata:
           type: object
-          description: Arbitrary metadata to include in account
+          description: Arbitrary metadata to include in ledger
 
-    CreateAccountResponse:
+    Ledger:
       type: object
       required:
         - id
+        - name
+        - metadata
       properties:
         id:
           type: string
           format: uuid
+        name:
+          type: string
+        metadata:
+          type: object
+          description: Arbitrary metadata to include in ledger
+
+    CreateAccountRequest:
+      type: object
+      required:
+        - ledgerId
+        - name
+        - metadata
+      properties:
+        ledgerId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        metadata:
+          type: object
+          description: Arbitrary metadata to include in account
 
     Account:
       type: object
       required:
         - id
-        - status
+        - ledgerId
+        - name
         - metadata
+        - status
       properties:
         id:
           type: string
           format: uuid
-        status:
-          $ref: "#/components/schemas/AccountStatus"
+        ledgerId:
+          type: string
+          format: uuid
+        name:
+          type: string
         metadata:
           type: object
           description: Arbitrary metadata to include in account
+        status:
+          $ref: "#/components/schemas/AccountStatus"
 
     AccountStatus:
       type: string
@@ -86,3 +183,36 @@ components:
         - active
         - frozen
         - blocked
+
+    Error:
+      type: object
+      required:
+        - type
+        - message
+        - details
+      properties:
+        type:
+          $ref: "#/components/schemas/ErrorType"
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErrorDetail"
+
+    ErrorDetail:
+      type: object
+      required:
+        - field
+        - message
+      properties:
+        field:
+          type: string
+        message:
+          type: string
+
+    ErrorType:
+      type: string
+      enum:
+        - INTERNAL_ERROR
+        - INVALID_REQUEST
