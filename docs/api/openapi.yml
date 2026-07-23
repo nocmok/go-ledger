@@ -143,6 +143,7 @@ components:
       required:
         - ledgerId
         - name
+        - currency
         - metadata
       properties:
         ledgerId:
@@ -150,6 +151,8 @@ components:
           format: uuid
         name:
           type: string
+        currency:
+          $ref: "#/components/schemas/Currency"
         metadata:
           type: object
           description: Arbitrary metadata to include in account
@@ -160,6 +163,7 @@ components:
         - id
         - ledgerId
         - name
+        - currency
         - metadata
         - status
       properties:
@@ -171,6 +175,8 @@ components:
           format: uuid
         name:
           type: string
+        currency:
+          $ref: "#/components/schemas/Currency"
         metadata:
           type: object
           description: Arbitrary metadata to include in account
@@ -183,6 +189,14 @@ components:
         - active
         - frozen
         - blocked
+
+    Currency:
+      type: string
+      enum:
+        - USD
+        - EUR
+        - BTC
+        - ETH
 
     Error:
       type: object
