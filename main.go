@@ -14,7 +14,29 @@ import (
 	"github.com/labstack/echo/v5"
 	"github.com/nocmok/go-ledger/internal/config"
 	"github.com/nocmok/go-ledger/internal/migrate"
+	"github.com/nocmok/go-ledger/internal/model"
 )
+
+func errorHandlingMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(context *echo.Context) error {
+		defer func() {
+			if err := recover(); err != nil {
+				context.JSON(http.StatusInternalServerError, model.Error{
+					Type:    model.ErrorTypeInternalError,
+					Message: "internal error",
+				})
+			}
+		}()
+		err := next(context)
+		if err == nil {
+			return nil
+		}
+		return context.JSON(http.StatusInternalServerError, model.Error{
+			Type:    model.ErrorTypeInternalError,
+			Message: "internal error",
+		})
+	}
+}
 
 func main() {
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
@@ -47,6 +69,8 @@ func main() {
 	defer pgxpool.Close()
 
 	e := echo.New()
+
+	e.Use(errorHandlingMiddleware)
 
 	type statusResponse struct {
 		Status string `json:"status"`
