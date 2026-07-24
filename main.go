@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -25,23 +24,13 @@ func errorHandlingMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(ec *echo.Context) error {
 		defer func() {
 			if err := recover(); err != nil {
-				ec.JSON(http.StatusInternalServerError, model.Error{
-					Type:    model.ErrorTypeInternalError,
-					Message: "internal error",
-				})
+				ec.JSON(http.StatusInternalServerError, model.Error{Message: "internal error"})
 			}
 		}()
-		err := next(ec)
-		if err == nil {
-			return nil
+		if err := next(ec); err != nil {
+			return ec.JSON(http.StatusInternalServerError, model.Error{Message: "internal error"})
 		}
-		if err, ok := errors.AsType[*model.Error](err); ok {
-			return ec.JSON(http.StatusBadRequest, err)
-		}
-		return ec.JSON(http.StatusInternalServerError, model.Error{
-			Type:    model.ErrorTypeInternalError,
-			Message: "internal error",
-		})
+		return nil
 	}
 }
 
@@ -95,26 +84,21 @@ func main() {
 	})
 
 	e.POST("/ledgers", func(ec *echo.Context) error {
-		type Headers struct {
+		var headers struct {
 			IdempotencyKey *uuid.UUID `header:"Idempotency-Key"`
 		}
-		headers := Headers{}
 		if err := echo.BindHeaders(ec, &headers); err != nil {
 			return err
 		}
 		if headers.IdempotencyKey == nil {
-			return &model.Error{
-				Type:    model.ErrorTypeInvalidRequest,
-				Message: "idempotency key required",
-			}
+			return ec.JSON(http.StatusBadRequest, model.Error{Message: "idempotency key required"})
 		}
-		type CreateLedgerRequest struct {
+		var body struct {
 			Name     *string          `json:"name"`
 			Metadata *json.RawMessage `json:"metadata"`
 		}
-		body := CreateLedgerRequest{}
 		if err := ec.Bind(&body); err != nil {
-			return err
+			return ec.JSON(http.StatusBadRequest, model.Error{Message: "malformed request"})
 		}
 		errorDetails := []model.ErrorDetail{}
 		if body.Name == nil {
@@ -124,11 +108,7 @@ func main() {
 			errorDetails = append(errorDetails, model.ErrorDetail{Field: "metadata", Message: "metadata required"})
 		}
 		if len(errorDetails) > 0 {
-			return &model.Error{
-				Type:    model.ErrorTypeInvalidRequest,
-				Message: "invalid request",
-				Details: errorDetails,
-			}
+			return ec.JSON(http.StatusBadRequest, model.Error{Message: "invalid request", Details: errorDetails})
 		}
 		ledger, err := ledgerService.Create(
 			ec.Request().Context(),
@@ -141,6 +121,23 @@ func main() {
 		}
 		ec.JSON(http.StatusCreated, ledger)
 		return nil
+	})
+
+	e.GET("/ledgers/:ledgerId", func(ec *echo.Context) error {
+		var params struct {
+			LedgerId uuid.UUID `param:"ledgerId"`
+		}
+		if err := ec.Bind(&params); err != nil {
+			return ec.JSON(http.StatusBadRequest, model.Error{Message: "malformed ledger id"})
+		}
+		ledger, ok, err := ledgerService.Get(ec.Request().Context(), params.LedgerId)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return ec.JSON(http.StatusNotFound, model.Error{Message: "not found"})
+		}
+		return ec.JSON(http.StatusOK, ledger)
 	})
 
 	eConfig := echo.StartConfig{
