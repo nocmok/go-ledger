@@ -14,15 +14,28 @@ import (
 	"github.com/labstack/echo/v5"
 	"github.com/nocmok/go-ledger/internal/config"
 	"github.com/nocmok/go-ledger/internal/migrate"
-	"github.com/nocmok/go-ledger/internal/model"
 )
 
 func errorHandlingMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+	type ErrorType string
+	const (
+		ErrorTypeInternalError  ErrorType = "INTERNAL_ERROR"
+		ErrorTypeInvalidRequest ErrorType = "INVALID_REQUEST"
+	)
+	type ErrorDetail struct {
+		Field   string `json:"field"`
+		Message string `json:"message"`
+	}
+	type Error struct {
+		Type    ErrorType     `json:"type"`
+		Message string        `json:"message"`
+		Details []ErrorDetail `json:"details"`
+	}
 	return func(context *echo.Context) error {
 		defer func() {
 			if err := recover(); err != nil {
-				context.JSON(http.StatusInternalServerError, model.Error{
-					Type:    model.ErrorTypeInternalError,
+				context.JSON(http.StatusInternalServerError, Error{
+					Type:    ErrorTypeInternalError,
 					Message: "internal error",
 				})
 			}
@@ -31,8 +44,8 @@ func errorHandlingMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		if err == nil {
 			return nil
 		}
-		return context.JSON(http.StatusInternalServerError, model.Error{
-			Type:    model.ErrorTypeInternalError,
+		return context.JSON(http.StatusInternalServerError, Error{
+			Type:    ErrorTypeInternalError,
 			Message: "internal error",
 		})
 	}
