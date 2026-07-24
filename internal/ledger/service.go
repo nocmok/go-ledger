@@ -34,7 +34,7 @@ func (s *service) Get(ctx context.Context, id uuid.UUID) (Ledger, bool, error) {
 		return ledger, true, nil
 	}
 	if errors.Is(err, pgx.ErrNoRows) {
-		return ledger, false, nil
+		return Ledger{}, false, nil
 	}
 	return Ledger{}, false, err
 }

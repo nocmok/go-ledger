@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v5"
+	"github.com/nocmok/go-ledger/internal/account"
 	"github.com/nocmok/go-ledger/internal/config"
 	"github.com/nocmok/go-ledger/internal/ledger"
 	"github.com/nocmok/go-ledger/internal/migrate"
@@ -66,6 +68,8 @@ func main() {
 
 	ledgerRepository := ledger.NewRepository(pgxpool)
 	ledgerService := ledger.NewService(ledgerRepository)
+	accountRepository := account.NewRepository(pgxpool)
+	accountService := account.NewService(accountRepository, ledgerService)
 
 	e := echo.New()
 
@@ -88,7 +92,7 @@ func main() {
 			IdempotencyKey *uuid.UUID `header:"Idempotency-Key"`
 		}
 		if err := echo.BindHeaders(ec, &headers); err != nil {
-			return err
+			return ec.JSON(http.StatusBadRequest, model.Error{Message: "malformed idempotency key"})
 		}
 		if headers.IdempotencyKey == nil {
 			return ec.JSON(http.StatusBadRequest, model.Error{Message: "idempotency key required"})
@@ -98,17 +102,17 @@ func main() {
 			Metadata *json.RawMessage `json:"metadata"`
 		}
 		if err := ec.Bind(&body); err != nil {
-			return ec.JSON(http.StatusBadRequest, model.Error{Message: "malformed request"})
+			return ec.JSON(http.StatusBadRequest, model.Error{Message: "malformed body"})
 		}
-		errorDetails := []model.ErrorDetail{}
+		details := []model.ErrorDetail{}
 		if body.Name == nil {
-			errorDetails = append(errorDetails, model.ErrorDetail{Field: "name", Message: "name required"})
+			details = append(details, model.ErrorDetail{Field: "name", Message: "name required"})
 		}
 		if body.Metadata == nil {
-			errorDetails = append(errorDetails, model.ErrorDetail{Field: "metadata", Message: "metadata required"})
+			details = append(details, model.ErrorDetail{Field: "metadata", Message: "metadata required"})
 		}
-		if len(errorDetails) > 0 {
-			return ec.JSON(http.StatusBadRequest, model.Error{Message: "invalid request", Details: errorDetails})
+		if len(details) > 0 {
+			return ec.JSON(http.StatusBadRequest, model.Error{Message: "invalid request", Details: details})
 		}
 		ledger, err := ledgerService.Create(
 			ec.Request().Context(),
@@ -138,6 +142,58 @@ func main() {
 			return ec.JSON(http.StatusNotFound, model.Error{Message: "not found"})
 		}
 		return ec.JSON(http.StatusOK, ledger)
+	})
+
+	e.POST("/accounts", func(ec *echo.Context) error {
+		var headers struct {
+			IdempotencyKey *uuid.UUID `header:"Idempotency-Key"`
+		}
+		if err := echo.BindHeaders(ec, &headers); err != nil {
+			return ec.JSON(http.StatusBadRequest, model.Error{Message: "malformed idempotency key"})
+		}
+		if headers.IdempotencyKey == nil {
+			return ec.JSON(http.StatusBadRequest, model.Error{Message: "idempotency key required"})
+		}
+		var body struct {
+			LedgerID *uuid.UUID        `json:"ledgerId"`
+			Name     *string           `json:"name"`
+			Currency *account.Currency `json:"currency"`
+			Metadata *json.RawMessage  `json:"metadata"`
+		}
+		if err := ec.Bind(&body); err != nil {
+			return ec.JSON(http.StatusBadRequest, model.Error{Message: "malformed body"})
+		}
+		details := []model.ErrorDetail{}
+		if body.LedgerID == nil {
+			details = append(details, model.ErrorDetail{Field: "ledgerId", Message: "ledger id required"})
+		}
+		if body.Name == nil {
+			details = append(details, model.ErrorDetail{Field: "name", Message: "name required"})
+		}
+		if body.Currency == nil {
+			details = append(details, model.ErrorDetail{Field: "currency", Message: "currency reqiured"})
+		}
+		if body.Metadata == nil {
+			details = append(details, model.ErrorDetail{Field: "metadata", Message: "metadata required"})
+		}
+		if len(details) > 0 {
+			return ec.JSON(http.StatusBadRequest, model.Error{Message: "invalid request", Details: details})
+		}
+		acc, err := accountService.Create(
+			ec.Request().Context(),
+			*headers.IdempotencyKey,
+			*body.LedgerID,
+			*body.Name,
+			*body.Currency,
+			*body.Metadata,
+		)
+		if err != nil {
+			if errors.Is(err, account.ErrLedgerDoesNotExist) {
+				return ec.JSON(http.StatusConflict, model.Error{Message: "invalid ledger id"})
+			}
+			return err
+		}
+		return ec.JSON(http.StatusCreated, acc)
 	})
 
 	eConfig := echo.StartConfig{

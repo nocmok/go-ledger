@@ -9,7 +9,3 @@ type Error struct {
 	Message string        `json:"message"`
 	Details []ErrorDetail `json:"details"`
 }
-
-func (e *Error) Error() string {
-	return e.Message
-}

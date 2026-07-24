@@ -10,6 +10,7 @@ import (
 
 type Repository interface {
 	Create(ctx context.Context, idempotencyKey uuid.UUID, ledgerId uuid.UUID, name string, currency Currency, metadata json.RawMessage) (Account, error)
+	Get(ctx context.Context, id uuid.UUID) (Account, error)
 }
 
 type repository struct {

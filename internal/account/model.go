@@ -31,10 +31,3 @@ type Account struct {
 	Metadata json.RawMessage `json:"metadata"`
 	Status   Status          `json:"status"`
 }
-
-type CreateAccountRequest struct {
-	LedgerID uuid.UUID       `json:"ledgerId"`
-	Name     string          `json:"name"`
-	Currency Currency        `json:"currency"`
-	Metadata json.RawMessage `json:"metadata"`
-}
