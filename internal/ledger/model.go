@@ -11,8 +11,3 @@ type Ledger struct {
 	Name     string          `json:"name"`
 	Metadata json.RawMessage `json:"metadata"`
 }
-
-type CreateLedgerRequest struct {
-	Name     string          `json:"name"`
-	Metadata json.RawMessage `json:"metadata"`
-}
