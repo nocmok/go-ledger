@@ -3,17 +3,23 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/labstack/echo/v5"
 	"github.com/nocmok/go-ledger/internal/config"
 	"github.com/nocmok/go-ledger/internal/migrate"
 )
 
 func main() {
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	})))
+
 	config, err := config.Load()
 	if err != nil {
 		panic(fmt.Errorf("error loading config: %w", err))
@@ -37,6 +43,15 @@ func main() {
 		panic(fmt.Errorf("error creating connection pool: %w", err))
 	}
 	defer pgxpool.Close()
+
+	e := echo.New()
+
+	eConfig := echo.StartConfig{
+		Address: fmt.Sprintf(":%d", config.ServerConfig.Port),
+	}
+	if err := eConfig.Start(ctx, e); err != nil {
+		panic(fmt.Errorf("error starting server: %w", err))
+	}
 
 	<-ctx.Done()
 }

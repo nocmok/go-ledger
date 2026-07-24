@@ -5,7 +5,8 @@ import (
 )
 
 type Config struct {
-	DBConfig DBConfig
+	DBConfig     DBConfig
+	ServerConfig ServerConfig
 }
 
 type DBConfig struct {
