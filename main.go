@@ -48,18 +48,16 @@ func main() {
 
 	e := echo.New()
 
-	statusOk := struct {
+	type statusResponse struct {
 		Status string `json:"status"`
-	}{
-		Status: "ok",
 	}
 
 	e.GET("/ready", func(context *echo.Context) error {
-		return context.JSON(http.StatusOK, statusOk)
+		return context.JSON(http.StatusOK, statusResponse{Status: "ok"})
 	})
 
 	e.GET("/live", func(context *echo.Context) error {
-		return context.JSON(http.StatusOK, statusOk)
+		return context.JSON(http.StatusOK, statusResponse{Status: "ok"})
 	})
 
 	eConfig := echo.StartConfig{
