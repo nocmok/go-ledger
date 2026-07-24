@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -46,6 +47,20 @@ func main() {
 	defer pgxpool.Close()
 
 	e := echo.New()
+
+	statusOk := struct {
+		Status string `json:"status"`
+	}{
+		Status: "ok",
+	}
+
+	e.GET("/ready", func(context *echo.Context) error {
+		return context.JSON(http.StatusOK, statusOk)
+	})
+
+	e.GET("/live", func(context *echo.Context) error {
+		return context.JSON(http.StatusOK, statusOk)
+	})
 
 	eConfig := echo.StartConfig{
 		Address:         fmt.Sprintf(":%d", config.ServerConfig.Port),
