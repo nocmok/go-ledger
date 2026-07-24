@@ -47,7 +47,8 @@ func main() {
 	e := echo.New()
 
 	eConfig := echo.StartConfig{
-		Address: fmt.Sprintf(":%d", config.ServerConfig.Port),
+		Address:         fmt.Sprintf(":%d", config.ServerConfig.Port),
+		GracefulTimeout: 5 * time.Second,
 	}
 	if err := eConfig.Start(ctx, e); err != nil {
 		panic(fmt.Errorf("error starting server: %w", err))
