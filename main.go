@@ -29,7 +29,8 @@ func main() {
 		panic(fmt.Errorf("failed to run migration: %w", err))
 	}
 
-	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
 
 	dbUrl := fmt.Sprintf("postgres://%s:%s@%s:%d/%s", config.DBConfig.User, config.DBConfig.Password, config.DBConfig.Host, config.DBConfig.Port, config.DBConfig.Name)
 	pgxpoolConfig, err := pgxpool.ParseConfig(dbUrl)
@@ -53,6 +54,4 @@ func main() {
 	if err := eConfig.Start(ctx, e); err != nil {
 		panic(fmt.Errorf("error starting server: %w", err))
 	}
-
-	<-ctx.Done()
 }
