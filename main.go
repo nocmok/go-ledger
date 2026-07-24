@@ -114,7 +114,7 @@ func main() {
 		if len(details) > 0 {
 			return ec.JSON(http.StatusBadRequest, model.Error{Message: "invalid request", Details: details})
 		}
-		ledger, err := ledgerService.Create(
+		l, err := ledgerService.Create(
 			ec.Request().Context(),
 			*headers.IdempotencyKey,
 			*body.Name,
@@ -123,7 +123,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		ec.JSON(http.StatusCreated, ledger)
+		ec.JSON(http.StatusCreated, l)
 		return nil
 	})
 
@@ -134,14 +134,14 @@ func main() {
 		if err := ec.Bind(&params); err != nil {
 			return ec.JSON(http.StatusBadRequest, model.Error{Message: "malformed ledger id"})
 		}
-		ledger, ok, err := ledgerService.Get(ec.Request().Context(), params.LedgerId)
+		l, err := ledgerService.Get(ec.Request().Context(), params.LedgerId)
 		if err != nil {
+			if errors.Is(err, ledger.ErrNotFound) {
+				return ec.JSON(http.StatusNotFound, model.Error{Message: "not found"})
+			}
 			return err
 		}
-		if !ok {
-			return ec.JSON(http.StatusNotFound, model.Error{Message: "not found"})
-		}
-		return ec.JSON(http.StatusOK, ledger)
+		return ec.JSON(http.StatusOK, l)
 	})
 
 	e.POST("/accounts", func(ec *echo.Context) error {
@@ -179,7 +179,7 @@ func main() {
 		if len(details) > 0 {
 			return ec.JSON(http.StatusBadRequest, model.Error{Message: "invalid request", Details: details})
 		}
-		acc, err := accountService.Create(
+		a, err := accountService.Create(
 			ec.Request().Context(),
 			*headers.IdempotencyKey,
 			*body.LedgerID,
@@ -188,12 +188,29 @@ func main() {
 			*body.Metadata,
 		)
 		if err != nil {
-			if errors.Is(err, account.ErrLedgerDoesNotExist) {
+			if errors.Is(err, account.ErrLedgerNotFound) {
 				return ec.JSON(http.StatusConflict, model.Error{Message: "invalid ledger id"})
 			}
 			return err
 		}
-		return ec.JSON(http.StatusCreated, acc)
+		return ec.JSON(http.StatusCreated, a)
+	})
+
+	e.GET("/accounts/:accountId", func(ec *echo.Context) error {
+		var params struct {
+			AccountId uuid.UUID `param:"accountId"`
+		}
+		if err := ec.Bind(&params); err != nil {
+			return ec.JSON(http.StatusBadRequest, model.Error{Message: "malformed account id"})
+		}
+		a, err := accountService.Get(ec.Request().Context(), params.AccountId)
+		if err != nil {
+			if errors.Is(err, account.ErrNotFound) {
+				return ec.JSON(http.StatusNotFound, model.Error{Message: "not found"})
+			}
+			return err
+		}
+		return ec.JSON(http.StatusOK, a)
 	})
 
 	eConfig := echo.StartConfig{

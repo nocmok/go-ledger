@@ -11,12 +11,13 @@ import (
 )
 
 var (
-	ErrLedgerDoesNotExist = errors.New("ledger doesn't exist")
+	ErrLedgerNotFound = errors.New("ledger not found")
+	ErrNotFound       = errors.New("not found")
 )
 
 type Service interface {
 	Create(ctx context.Context, idempotencyKey uuid.UUID, ledgerId uuid.UUID, name string, currency Currency, metadata json.RawMessage) (Account, error)
-	Get(ctx context.Context, id uuid.UUID) (Account, bool, error)
+	Get(ctx context.Context, id uuid.UUID) (Account, error)
 }
 
 type service struct {
@@ -32,23 +33,23 @@ func NewService(repository Repository, ledgerService ledger.Service) Service {
 }
 
 func (s *service) Create(ctx context.Context, idempotencyKey uuid.UUID, ledgerId uuid.UUID, name string, currency Currency, metadata json.RawMessage) (Account, error) {
-	_, ok, err := s.ledgerService.Get(ctx, ledgerId)
+	_, err := s.ledgerService.Get(ctx, ledgerId)
 	if err != nil {
+		if errors.Is(err, ledger.ErrNotFound) {
+			return Account{}, ErrLedgerNotFound
+		}
 		return Account{}, err
-	}
-	if !ok {
-		return Account{}, ErrLedgerDoesNotExist
 	}
 	return s.repository.Create(ctx, idempotencyKey, ledgerId, name, currency, metadata)
 }
 
-func (s *service) Get(ctx context.Context, id uuid.UUID) (Account, bool, error) {
+func (s *service) Get(ctx context.Context, id uuid.UUID) (Account, error) {
 	account, err := s.repository.Get(ctx, id)
 	if err == nil {
-		return account, true, nil
+		return account, nil
 	}
 	if errors.Is(err, pgx.ErrNoRows) {
-		return Account{}, false, nil
+		return Account{}, ErrNotFound
 	}
-	return Account{}, false, err
+	return Account{}, err
 }

@@ -9,9 +9,13 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+var (
+	ErrNotFound = errors.New("not found")
+)
+
 type Service interface {
 	Create(ctx context.Context, idempotencyKey uuid.UUID, name string, metadata json.RawMessage) (Ledger, error)
-	Get(ctx context.Context, id uuid.UUID) (Ledger, bool, error)
+	Get(ctx context.Context, id uuid.UUID) (Ledger, error)
 }
 
 type service struct {
@@ -28,13 +32,13 @@ func (s *service) Create(ctx context.Context, idempotencyKey uuid.UUID, name str
 	return s.repository.Create(ctx, idempotencyKey, name, metadata)
 }
 
-func (s *service) Get(ctx context.Context, id uuid.UUID) (Ledger, bool, error) {
+func (s *service) Get(ctx context.Context, id uuid.UUID) (Ledger, error) {
 	ledger, err := s.repository.Get(ctx, id)
 	if err == nil {
-		return ledger, true, nil
+		return ledger, nil
 	}
 	if errors.Is(err, pgx.ErrNoRows) {
-		return Ledger{}, false, nil
+		return Ledger{}, ErrNotFound
 	}
-	return Ledger{}, false, err
+	return Ledger{}, err
 }
