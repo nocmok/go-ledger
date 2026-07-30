@@ -1,0 +1,32 @@
+info:
+  name: /ledgers/{ledgerId}/accounts
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{host}}/ledgers/{{ledgerId}}/accounts"
+  headers:
+    - name: Idempotency-Key
+      value: "{{$randomUUID}}"
+  body:
+    type: json
+    data: |-
+      {
+        "name": "clearing",
+        "currency": "USD",
+        "overdraftAllowed": true,
+        "metadata": {}
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: bru.setCollectionVar("accountId", res.getBody().id)
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

@@ -9,7 +9,7 @@ import (
 )
 
 type Repository interface {
-	Create(ctx context.Context, idempotencyKey uuid.UUID, name string, metadata json.RawMessage) (Ledger, error)
+	Create(ctx context.Context, name string, metadata json.RawMessage) (Ledger, error)
 	Get(ctx context.Context, id uuid.UUID) (Ledger, error)
 }
 
@@ -21,11 +21,10 @@ func NewRepository(db query.DBTX) Repository {
 	return &repository{q: query.New(db)}
 }
 
-func (r *repository) Create(ctx context.Context, idempotencyKey uuid.UUID, name string, metadata json.RawMessage) (Ledger, error) {
+func (r *repository) Create(ctx context.Context, name string, metadata json.RawMessage) (Ledger, error) {
 	row, err := r.q.CreateLedger(ctx, query.CreateLedgerParams{
-		Name:           name,
-		Metadata:       metadata,
-		IdempotencyKey: idempotencyKey,
+		Name:     name,
+		Metadata: metadata,
 	})
 	if err != nil {
 		return Ledger{}, err

@@ -17,6 +17,7 @@ import (
 	"github.com/labstack/echo/v5"
 	"github.com/nocmok/go-ledger/internal/account"
 	"github.com/nocmok/go-ledger/internal/config"
+	"github.com/nocmok/go-ledger/internal/currency"
 	"github.com/nocmok/go-ledger/internal/ledger"
 	"github.com/nocmok/go-ledger/internal/migrate"
 	"github.com/nocmok/go-ledger/internal/model"
@@ -144,7 +145,7 @@ func main() {
 		return ec.JSON(http.StatusOK, l)
 	})
 
-	e.POST("/accounts", func(ec *echo.Context) error {
+	e.POST("/ledgers/:ledgerId/accounts", func(ec *echo.Context) error {
 		var headers struct {
 			IdempotencyKey *uuid.UUID `header:"Idempotency-Key"`
 		}
@@ -155,23 +156,27 @@ func main() {
 			return ec.JSON(http.StatusBadRequest, model.Error{Message: "idempotency key required"})
 		}
 		var body struct {
-			LedgerID *uuid.UUID        `json:"ledgerId"`
-			Name     *string           `json:"name"`
-			Currency *account.Currency `json:"currency"`
-			Metadata *json.RawMessage  `json:"metadata"`
+			LedgerId         *uuid.UUID         `param:"ledgerId"`
+			Name             *string            `json:"name"`
+			Currency         *currency.Currency `json:"currency"`
+			OverdraftAllowed *bool              `json:"overdraftAllowed"`
+			Metadata         *json.RawMessage   `json:"metadata"`
 		}
 		if err := ec.Bind(&body); err != nil {
-			return ec.JSON(http.StatusBadRequest, model.Error{Message: "malformed body"})
+			return ec.JSON(http.StatusBadRequest, model.Error{Message: "malformed params or body"})
 		}
 		details := []model.ErrorDetail{}
-		if body.LedgerID == nil {
-			details = append(details, model.ErrorDetail{Field: "ledgerId", Message: "ledger id required"})
+		if body.LedgerId == nil {
+			details = append(details, model.ErrorDetail{Field: "ledgerId", Message: "ledgerId required"})
 		}
 		if body.Name == nil {
 			details = append(details, model.ErrorDetail{Field: "name", Message: "name required"})
 		}
 		if body.Currency == nil {
 			details = append(details, model.ErrorDetail{Field: "currency", Message: "currency reqiured"})
+		}
+		if body.OverdraftAllowed == nil {
+			details = append(details, model.ErrorDetail{Field: "overdraftAllowed", Message: "overdraftAllowed reqiured"})
 		}
 		if body.Metadata == nil {
 			details = append(details, model.ErrorDetail{Field: "metadata", Message: "metadata required"})
@@ -182,9 +187,10 @@ func main() {
 		a, err := accountService.Create(
 			ec.Request().Context(),
 			*headers.IdempotencyKey,
-			*body.LedgerID,
+			*body.LedgerId,
 			*body.Name,
 			*body.Currency,
+			*body.OverdraftAllowed,
 			*body.Metadata,
 		)
 		if err != nil {
@@ -196,14 +202,15 @@ func main() {
 		return ec.JSON(http.StatusCreated, a)
 	})
 
-	e.GET("/accounts/:accountId", func(ec *echo.Context) error {
+	e.GET("/ledgers/:ledgerId/accounts/:accountId", func(ec *echo.Context) error {
 		var params struct {
+			LedgerId  uuid.UUID `param:"ledgerId"`
 			AccountId uuid.UUID `param:"accountId"`
 		}
 		if err := ec.Bind(&params); err != nil {
-			return ec.JSON(http.StatusBadRequest, model.Error{Message: "malformed account id"})
+			return ec.JSON(http.StatusBadRequest, model.Error{Message: "malformed params"})
 		}
-		a, err := accountService.Get(ec.Request().Context(), params.AccountId)
+		a, err := accountService.Get(ec.Request().Context(), params.LedgerId, params.AccountId)
 		if err != nil {
 			if errors.Is(err, account.ErrNotFound) {
 				return ec.JSON(http.StatusNotFound, model.Error{Message: "not found"})

@@ -1,0 +1,28 @@
+opencollection: 1.0.0
+
+info:
+  name: ledger
+config:
+  proxy:
+    inherit: true
+    config:
+      protocol: http
+      hostname: ""
+      port: ""
+      auth:
+        username: ""
+        password: ""
+      bypassProxy: ""
+
+request:
+  variables:
+    - name: ledgerId
+      value: e0b8ddf9-7780-4780-bae4-433f5f9a34ba
+    - name: accountId
+      value: c42ae44c-fd05-4c2f-a569-9a00f86326d2
+bundled: false
+extensions:
+  bruno:
+    ignore:
+      - node_modules
+      - .git

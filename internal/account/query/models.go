@@ -12,12 +12,14 @@ import (
 )
 
 type Account struct {
-	ID             uuid.UUID
-	LedgerID       uuid.UUID
-	Name           string
-	Currency       string
-	Metadata       json.RawMessage
-	Status         string
-	CreatedAt      pgtype.Timestamp
-	IdempotencyKey uuid.UUID
+	LedgerID         uuid.UUID
+	ID               uuid.UUID
+	Name             string
+	Currency         string
+	Balance          int64
+	AvailableBalance int64
+	OverdraftAllowed bool
+	Metadata         json.RawMessage
+	Status           string
+	CreatedAt        pgtype.Timestamp
 }

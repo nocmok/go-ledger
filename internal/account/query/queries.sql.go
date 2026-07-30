@@ -13,33 +13,30 @@ import (
 )
 
 const createAccount = `-- name: CreateAccount :one
-with inserted as (
-    insert into account (ledger_id, name, currency, metadata, status, idempotency_key)
-    values ($1, $2, $3, $4, $5, $6)
-    on conflict (idempotency_key) do nothing
-    returning id, ledger_id, name, currency, metadata, status
-)
-select id, ledger_id, name, currency, metadata, status from inserted
-union all
-select id, ledger_id, name, currency, metadata, status from account where idempotency_key = $6
+insert into account (ledger_id, name, currency, overdraft_allowed, metadata, status)
+values ($1, $2, $3, $4, $5, $6)
+returning id, ledger_id, name, currency, balance, available_balance, overdraft_allowed, metadata, status
 `
 
 type CreateAccountParams struct {
-	LedgerID       uuid.UUID
-	Name           string
-	Currency       string
-	Metadata       json.RawMessage
-	Status         string
-	IdempotencyKey uuid.UUID
+	LedgerID         uuid.UUID
+	Name             string
+	Currency         string
+	OverdraftAllowed bool
+	Metadata         json.RawMessage
+	Status           string
 }
 
 type CreateAccountRow struct {
-	ID       uuid.UUID
-	LedgerID uuid.UUID
-	Name     string
-	Currency string
-	Metadata json.RawMessage
-	Status   string
+	ID               uuid.UUID
+	LedgerID         uuid.UUID
+	Name             string
+	Currency         string
+	Balance          int64
+	AvailableBalance int64
+	OverdraftAllowed bool
+	Metadata         json.RawMessage
+	Status           string
 }
 
 func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (CreateAccountRow, error) {
@@ -47,9 +44,9 @@ func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (C
 		arg.LedgerID,
 		arg.Name,
 		arg.Currency,
+		arg.OverdraftAllowed,
 		arg.Metadata,
 		arg.Status,
-		arg.IdempotencyKey,
 	)
 	var i CreateAccountRow
 	err := row.Scan(
@@ -57,6 +54,9 @@ func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (C
 		&i.LedgerID,
 		&i.Name,
 		&i.Currency,
+		&i.Balance,
+		&i.AvailableBalance,
+		&i.OverdraftAllowed,
 		&i.Metadata,
 		&i.Status,
 	)
@@ -64,28 +64,39 @@ func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (C
 }
 
 const getAccount = `-- name: GetAccount :one
-select id, ledger_id, name, currency, metadata, status 
+select id, ledger_id, name, currency, balance, available_balance, overdraft_allowed, metadata, status 
 from account
-where id = $1
+where id = $2 and ledger_id = $1
 `
 
-type GetAccountRow struct {
-	ID       uuid.UUID
+type GetAccountParams struct {
 	LedgerID uuid.UUID
-	Name     string
-	Currency string
-	Metadata json.RawMessage
-	Status   string
+	ID       uuid.UUID
 }
 
-func (q *Queries) GetAccount(ctx context.Context, id uuid.UUID) (GetAccountRow, error) {
-	row := q.db.QueryRow(ctx, getAccount, id)
+type GetAccountRow struct {
+	ID               uuid.UUID
+	LedgerID         uuid.UUID
+	Name             string
+	Currency         string
+	Balance          int64
+	AvailableBalance int64
+	OverdraftAllowed bool
+	Metadata         json.RawMessage
+	Status           string
+}
+
+func (q *Queries) GetAccount(ctx context.Context, arg GetAccountParams) (GetAccountRow, error) {
+	row := q.db.QueryRow(ctx, getAccount, arg.LedgerID, arg.ID)
 	var i GetAccountRow
 	err := row.Scan(
 		&i.ID,
 		&i.LedgerID,
 		&i.Name,
 		&i.Currency,
+		&i.Balance,
+		&i.AvailableBalance,
+		&i.OverdraftAllowed,
 		&i.Metadata,
 		&i.Status,
 	)

@@ -1,0 +1,30 @@
+info:
+  name: /ledgers
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{host}}/ledgers"
+  headers:
+    - name: Idempotency-Key
+      value: "{{$randomUUID}}"
+  body:
+    type: json
+    data: |-
+      {
+        "name": "ledger",
+        "metadata": {}
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: bru.setCollectionVar("ledgerId", res.getBody().id)
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

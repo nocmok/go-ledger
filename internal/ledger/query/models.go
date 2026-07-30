@@ -12,9 +12,8 @@ import (
 )
 
 type Ledger struct {
-	ID             uuid.UUID
-	Name           string
-	Metadata       json.RawMessage
-	CreatedAt      pgtype.Timestamp
-	IdempotencyKey uuid.UUID
+	ID        uuid.UUID
+	Name      string
+	Metadata  json.RawMessage
+	CreatedAt pgtype.Timestamp
 }

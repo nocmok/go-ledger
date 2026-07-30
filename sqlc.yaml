@@ -1,7 +1,7 @@
 version: "2"
 sql:
   - engine: "postgresql"
-    schema: "migrations/001_create_ledger_table.up.sql"
+    schema: "migrations/001_ledger_table.up.sql"
     queries: "internal/ledger/query/queries.sql"
     gen:
       go:
@@ -16,7 +16,7 @@ sql:
             go_type: "encoding/json.RawMessage"
 
   - engine: "postgresql"
-    schema: "migrations/002_create_account_table.up.sql"
+    schema: "migrations/002_account_table.up.sql"
     queries: "internal/account/query/queries.sql"
     gen:
       go:

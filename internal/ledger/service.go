@@ -29,7 +29,8 @@ func NewService(repository Repository) Service {
 }
 
 func (s *service) Create(ctx context.Context, idempotencyKey uuid.UUID, name string, metadata json.RawMessage) (Ledger, error) {
-	return s.repository.Create(ctx, idempotencyKey, name, metadata)
+	// todo check idempotency
+	return s.repository.Create(ctx, name, metadata)
 }
 
 func (s *service) Get(ctx context.Context, id uuid.UUID) (Ledger, error) {

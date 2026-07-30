@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/nocmok/go-ledger/internal/currency"
 	"github.com/nocmok/go-ledger/internal/ledger"
 )
 
@@ -16,8 +17,8 @@ var (
 )
 
 type Service interface {
-	Create(ctx context.Context, idempotencyKey uuid.UUID, ledgerId uuid.UUID, name string, currency Currency, metadata json.RawMessage) (Account, error)
-	Get(ctx context.Context, id uuid.UUID) (Account, error)
+	Create(ctx context.Context, idempotencyKey uuid.UUID, ledgerId uuid.UUID, name string, currency currency.Currency, overdraftAllowed bool, metadata json.RawMessage) (Account, error)
+	Get(ctx context.Context, ledgerId uuid.UUID, id uuid.UUID) (Account, error)
 }
 
 type service struct {
@@ -32,7 +33,8 @@ func NewService(repository Repository, ledgerService ledger.Service) Service {
 	}
 }
 
-func (s *service) Create(ctx context.Context, idempotencyKey uuid.UUID, ledgerId uuid.UUID, name string, currency Currency, metadata json.RawMessage) (Account, error) {
+func (s *service) Create(ctx context.Context, idempotencyKey uuid.UUID, ledgerId uuid.UUID, name string, currency currency.Currency, overdraftAllowed bool, metadata json.RawMessage) (Account, error) {
+	// todo check idempotency
 	_, err := s.ledgerService.Get(ctx, ledgerId)
 	if err != nil {
 		if errors.Is(err, ledger.ErrNotFound) {
@@ -40,11 +42,11 @@ func (s *service) Create(ctx context.Context, idempotencyKey uuid.UUID, ledgerId
 		}
 		return Account{}, err
 	}
-	return s.repository.Create(ctx, idempotencyKey, ledgerId, name, currency, metadata)
+	return s.repository.Create(ctx, ledgerId, name, currency, metadata)
 }
 
-func (s *service) Get(ctx context.Context, id uuid.UUID) (Account, error) {
-	account, err := s.repository.Get(ctx, id)
+func (s *service) Get(ctx context.Context, ledgerId uuid.UUID, id uuid.UUID) (Account, error) {
+	account, err := s.repository.Get(ctx, ledgerId, id)
 	if err == nil {
 		return account, nil
 	}
