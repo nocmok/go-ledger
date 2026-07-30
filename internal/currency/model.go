@@ -8,3 +8,5 @@ const (
 	CurrencyBTC Currency = "BTC"
 	CurrencyETH Currency = "ETH"
 )
+
+// todo add unmarshaller

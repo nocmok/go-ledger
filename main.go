@@ -18,9 +18,11 @@ import (
 	"github.com/nocmok/go-ledger/internal/account"
 	"github.com/nocmok/go-ledger/internal/config"
 	"github.com/nocmok/go-ledger/internal/currency"
+	"github.com/nocmok/go-ledger/internal/db"
 	"github.com/nocmok/go-ledger/internal/ledger"
 	"github.com/nocmok/go-ledger/internal/migrate"
 	"github.com/nocmok/go-ledger/internal/model"
+	"github.com/nocmok/go-ledger/internal/transaction"
 )
 
 func errorHandlingMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
@@ -67,10 +69,13 @@ func main() {
 	}
 	defer pgxpool.Close()
 
+	txManager := db.NewTxManager(pgxpool)
 	ledgerRepository := ledger.NewRepository(pgxpool)
 	ledgerService := ledger.NewService(ledgerRepository)
 	accountRepository := account.NewRepository(pgxpool)
 	accountService := account.NewService(accountRepository, ledgerService)
+	transactionRepository := transaction.NewRepository()
+	transactionService := transaction.NewService(txManager, transactionRepository)
 
 	e := echo.New()
 
@@ -218,6 +223,62 @@ func main() {
 			return err
 		}
 		return ec.JSON(http.StatusOK, a)
+	})
+
+	e.POST("/ledgers/:ledgerId/transactions", func(ec *echo.Context) error {
+		var headers struct {
+			IdempotencyKey *uuid.UUID `header:"Idempotency-Key"`
+		}
+		if err := echo.BindHeaders(ec, &headers); err != nil {
+			return ec.JSON(http.StatusBadRequest, model.Error{Message: "malformed idempotency key"})
+		}
+		if headers.IdempotencyKey == nil {
+			return ec.JSON(http.StatusBadRequest, model.Error{Message: "idempotency key required"})
+		}
+		var body struct {
+			LedgerId *uuid.UUID         `param:"ledgerId"`
+			Currency *currency.Currency `json:"currency"`
+			Entries  []struct {
+				AccountId uuid.UUID `json:"accountId"`
+				Amount    int64     `json:"amount"`
+			} `json:"entries"`
+			Metadata json.RawMessage `json:"metadata"`
+		}
+		if err := ec.Bind(&body); err != nil {
+			return ec.JSON(http.StatusBadRequest, model.Error{Message: "malformed params or body"})
+		}
+		details := []model.ErrorDetail{}
+		if body.Currency == nil {
+			details = append(details, model.ErrorDetail{Field: "currency", Message: "currency required"})
+		}
+		if body.Entries == nil {
+			details = append(details, model.ErrorDetail{Field: "entries", Message: "entries required"})
+		}
+		if body.Metadata == nil {
+			details = append(details, model.ErrorDetail{Field: "metadata", Message: "metadata required"})
+		}
+		if len(details) > 0 {
+			return ec.JSON(http.StatusBadRequest, model.Error{Message: "invalid request", Details: details})
+		}
+		entries := make([]transaction.Entry, 0, len(body.Entries))
+		for _, entry := range body.Entries {
+			entries = append(entries, transaction.Entry{
+				AccountId: entry.AccountId,
+				Amount:    entry.Amount,
+			})
+		}
+		t, err := transactionService.CreateTransaction(
+			ec.Request().Context(),
+			*headers.IdempotencyKey,
+			*body.LedgerId,
+			*body.Currency,
+			entries,
+			body.Metadata,
+		)
+		if err != nil {
+			return err
+		}
+		return ec.JSON(http.StatusCreated, t)
 	})
 
 	eConfig := echo.StartConfig{

@@ -1,0 +1,35 @@
+info:
+  name: /ledgers/{ledgerId}/transactions
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: "{{host}}/ledgers/{{ledgerId}}/transactions"
+  headers:
+    - name: Idempotency-Key
+      value: "{{$randomUUID}}"
+  body:
+    type: json
+    data: |-
+      {
+        "currency": "USD",
+        "entries": [
+          {
+            "accountId": "{{accountId}}",
+            "amount": -100
+          },
+          {
+            "accountId": "{{accountId}}",
+            "amount": 100
+          }
+        ],
+        "metadata": {}
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

@@ -1,10 +1,10 @@
 create table if not exists ledger_entry
-(
-    ledger_id uuid not null, 
+( 
     transaction_id uuid not null,
-    foreign key (ledger_id, transaction_id) references transaction(ledger_id, id),
+    ledger_id uuid not null,
+    foreign key (transaction_id, ledger_id) references transaction(id, ledger_id),
     id uuid primary key not null,
     account_id uuid not null,
-    foreign key (ledger_id, account_id) references account(ledger_id, id),
+    foreign key (account_id, ledger_id) references account(id, ledger_id),
     amount bigint
 );

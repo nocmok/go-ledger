@@ -12,8 +12,8 @@ import (
 )
 
 type Account struct {
-	LedgerID         uuid.UUID
 	ID               uuid.UUID
+	LedgerID         uuid.UUID
 	Name             string
 	Currency         string
 	Balance          int64

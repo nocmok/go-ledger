@@ -17,9 +17,9 @@ config:
 request:
   variables:
     - name: ledgerId
-      value: e0b8ddf9-7780-4780-bae4-433f5f9a34ba
+      value: 070a999c-2dc9-4673-a2f0-e13faa02714d
     - name: accountId
-      value: c42ae44c-fd05-4c2f-a569-9a00f86326d2
+      value: 7703d86c-8070-4bef-bf20-eb20d28e811f
 bundled: false
 extensions:
   bruno:
